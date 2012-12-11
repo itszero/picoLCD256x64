@@ -1,0 +1,1 @@
+make . && make && src/lcd_renderer && ruby ../picolcd.rb
