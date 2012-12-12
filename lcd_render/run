@@ -1,1 +1,1 @@
-make . && make && src/lcd_renderer && ruby ../picolcd.rb
+make . && make && src/lcd_renderer < example.json > 1.png && ruby ../picolcd.rb
