@@ -20,6 +20,7 @@ input and draws the image according to the input specification.
 
 * Codeless Kext idea comes from [k8055-mac-codeless-kext]. Thanks, Piha.
 * MetaWatch font comes from [MetaWatch] project.
+* [Parson], Small json parser and reader written in C.
 
 ## License
 
@@ -47,3 +48,4 @@ SOFTWARE.
 [picoLCD]: http://www.picolcd.com/
 [k8055-mac-codeless-kext]: https://github.com/piha/k8055-mac-codeless-kext
 [MetaWatch]: http://www.metawatch.org
+[Parson]: https://github.com/kgabis/parson
