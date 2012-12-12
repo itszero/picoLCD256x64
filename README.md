@@ -5,16 +5,16 @@ PicoLCD 256x64 user-space driver/renderer. [Screenshot].
 
 ## Current Status
 
-It's a Ruby/libusb-based driver for controlling [picoLCD] 256x64.  The driver
-should work on Windows/Linux/Mac. It requires no driver on Linux platform.  For
-Windows, you may need a libusb driver for it. For Mac, It requires a codeless
-kext to be installed on the system, detaching the device from OSX HID driver so
-that it could be controlled by user-space driver.
+It's a Ruby/libusb-based driver for controlling [picoLCD] 256x64. The driver
+should work on Windows/Linux/Mac. It requires no driver on Linux. For Windows,
+you may need a libusb driver for it. For Mac, It requires a codeless kext to be
+installed on the system for detaching the device from OSX HID driver so that it
+could be controlled by user-space driver.
 
 The project is still in its early stage. The picolcd.rb serves as a driver and
-CLI program for now.  It simply takes "1.png" and send it to LCD. The LCD
-renderer only draws a image with hard-coded. I will change it to take JSON as
-input and draws the image according to the input specification.
+CLI program for now. It simply takes "1.png" and send it to LCD. The LCD
+renderer will take a JSON input and render a single-color PNG file for uploading
+to LCD.
 
 ## Credits
 
