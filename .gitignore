@@ -4,4 +4,4 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 
-lcd_render/src/lcd_renderer
+lcd_renderer/src/lcd_renderer
