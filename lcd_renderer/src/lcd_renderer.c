@@ -11,11 +11,34 @@
 
 FT_Library ft_lib;
 
-void lcd_draw_text(cairo_t *ctx, float x, float y, const char *str)
+void lcd_draw_text(cairo_t *ctx, float x, float y, float w, float h, bool center, bool invert, const char *str)
 {
-  cairo_move_to(ctx, x, y);
+  cairo_text_extents_t extents;
+  cairo_text_extents(ctx, str, &extents);
+
+  if (w == 0)
+    w = extents.x_advance; // so user can use space for padding
+
+  if (h == 0)
+    h = extents.height;
+
   cairo_set_source_rgb(ctx, 0, 0, 0);
-  cairo_show_text(ctx, str);  
+  if (invert)
+  {
+    cairo_rectangle(ctx, x, y - h, w, h);
+    cairo_fill(ctx);
+    // cairo_set_source_rgb(ctx, 1, 1, 1);
+  }
+
+  if (center)
+  {
+    x = (int)(x + (w - extents.x_advance) / 2);
+    y = (int)(y + (h - extents.height) / 2);
+    cairo_set_source_rgb(ctx, 1, 1, 1);
+  }
+
+  cairo_move_to(ctx, x, y);
+  cairo_show_text(ctx, str);
 }
 
 void lcd_draw_progress_bar(cairo_t *ctx, float x, float y, float width, float height, float progress)
@@ -66,12 +89,23 @@ void init_libs()
   }
 }
 
+char *pngData = NULL;
+long pngDataSz = 0;
+
 cairo_status_t write_png_stream_to_stdout(void *closure, const unsigned char *data, unsigned int length)
 {
-  if (fwrite(data, 1, length, stdout) == length)
-    return CAIRO_STATUS_SUCCESS;
+  if (pngData == NULL) {
+    pngDataSz = length;
+    pngData = malloc(sizeof(char) * length);
+  }
   else
-    return CAIRO_STATUS_WRITE_ERROR;
+  {
+    pngDataSz += length;
+    pngData = realloc(pngData, sizeof(char) * pngDataSz);
+  }
+
+  memcpy(pngData + pngDataSz - length, data, length);
+  return CAIRO_STATUS_SUCCESS;
 }
 
 void draw_image(cairo_t *ctx, JSON_Object *root)
@@ -80,21 +114,28 @@ void draw_image(cairo_t *ctx, JSON_Object *root)
   JSON_Object *values = json_object_get_object(root, "values");
 
   size_t layout_length = json_array_get_count(layout);
-  fprintf(stderr, "lcd_renderer: layout has %zd objects\n", layout_length);
   for(size_t i=0;i<layout_length;i++)
   {
     JSON_Object *obj = json_array_get_object(layout, i);
     const char *type = json_object_get_string(obj, "type");
-    fprintf(stderr, "lcd_renderer: [layout] obj #%zd - %s\n", i, type);
     if (strcmp(type, "text") == 0)
     {
       JSON_Array *origin = json_object_get_array(obj, "origin");
       float x = (float)json_array_get_number(origin, 0), y = (float)json_array_get_number(origin, 1);
+      JSON_Array *size = json_object_get_array(obj, "size");
+      float w = (float)json_array_get_number(size, 0), h = (float)json_array_get_number(size, 1);
+      bool center = false, invert = false;
+
+      if (json_object_get_boolean(obj, "center") > 0)
+        center = true;
+
+      if (json_object_get_boolean(obj, "invert") > 0)
+        invert = true;
+
       const char *value_key = json_object_get_string(obj, "value");
       const char *str = json_object_get_string(values, value_key);
 
-      fprintf(stderr, "lcd_renderer: [layout] origin: (%.1f, %.1f) str: %s (key: %s)\n", x, y, str, value_key);
-      lcd_draw_text(ctx, x, y, str);      
+      lcd_draw_text(ctx, x, y, w, h, center, invert, str);
     }
     else if (strcmp(type, "progressbar") == 0)
     {
@@ -105,78 +146,78 @@ void draw_image(cairo_t *ctx, JSON_Object *root)
       const char *value_key = json_object_get_string(obj, "value");
       float prg = (float)json_object_get_number(values, value_key);
 
-      fprintf(stderr, "lcd_renderer: [layout] origin: (%.1f, %.1f) size: (%.1f, %.1f) progress: %.1f (key: %s)\n", x, y, w, h, prg, value_key);
       lcd_draw_progress_bar(ctx, x, y, w, h, prg);
     }
   }
 }
 
-char* read_all_from_stdin()
+char* read_json_from_stdin()
 {
-  char buf[1024];
-  char *content = malloc(sizeof(char) * 1024);
-  content[0] = '\0';
+  int sz = 0;
 
-  size_t sz = 1;
-  while(fgets(buf, 1024, stdin))
-  {
-    char *old = content;
-    sz += strlen(buf);
-    content = realloc(content, sz);
-    if (content == NULL)
-    {
-      fprintf(stderr, "lcd_renderer: Failed to reallocate more space for content\n");
-      free(old);
-      exit(-1);
-    }
-    strcat(content, buf);
-  }
+  if (feof(stdin))
+    return NULL;
+  fread(&sz, 1, 4, stdin);
+  char *content = malloc(sizeof(char) * (sz + 1));
+  fread(content, 1, sz, stdin);
 
-  return content;
+  if (feof(stdin))
+    return NULL;
+  else
+    return content;
 }
 
 int main(int argc, char *argv[])
 {
   init_libs();
 
-  char* strJSON = read_all_from_stdin();
-  fprintf(stderr, "lcd_renderer: read %zd bytes JSON\n", strlen(strJSON));
-  JSON_Value *valRoot = json_parse_string(strJSON);
-  free(strJSON);
-  if (valRoot == NULL)
-  {
-    fprintf(stderr, "lcd_renderer: Failed to parse JSON input\n");
-    exit(-1);
+  while (true) {
+    char* strJSON = read_json_from_stdin();
+    if (strJSON == NULL) break;
+    JSON_Value *valRoot = json_parse_string(strJSON);
+    free(strJSON);
+    if (valRoot == NULL)
+    {
+      fprintf(stderr, "lcd_renderer: Failed to parse JSON input\n");
+      exit(-1);
+    }
+    JSON_Object *root = json_value_get_object(valRoot);
+
+    cairo_font_face_t *ffMetaWatch = load_font_for_cairo("./metawatch_8pt.ttf", 0);
+    cairo_surface_t *cs;
+    cs = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 256, 64);
+
+    cairo_t *ctx;
+    ctx = cairo_create(cs);
+
+    cairo_rectangle(ctx, 0.0, 0.0, 256, 64);
+    cairo_set_source_rgb(ctx, 1.0, 1.0, 1.0);
+    cairo_fill(ctx);
+
+    cairo_font_options_t *cfo;
+    cfo = cairo_font_options_create();
+    cairo_font_options_set_antialias(cfo, CAIRO_ANTIALIAS_NONE);
+    cairo_set_font_options(ctx, cfo);
+    cairo_set_font_face(ctx, ffMetaWatch);
+    cairo_set_font_size(ctx, 8);
+
+    draw_image(ctx, root);
+
+    cairo_font_options_destroy(cfo);
+    cairo_destroy(ctx);
+
+    cairo_surface_write_to_png_stream(cs, write_png_stream_to_stdout, NULL);
+    cairo_surface_flush(cs);
+    cairo_surface_destroy(cs);
+    cairo_font_face_destroy(ffMetaWatch);
+
+    json_value_free(valRoot);
+
+    fwrite(&pngDataSz, 1, 4, stdout);
+    fwrite(pngData, 1, pngDataSz, stdout);
+    fflush(stdout);
+
+    free(pngData);
+    pngData = NULL;
   }
-  JSON_Object *root = json_value_get_object(valRoot);
-
-  cairo_font_face_t *ffMetaWatch = load_font_for_cairo("./metawatch_8pt.ttf", 0);
-  cairo_surface_t *cs;
-  cs = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 256, 64);
-
-  cairo_t *ctx;
-  ctx = cairo_create(cs);
-
-  cairo_rectangle(ctx, 0.0, 0.0, 256, 64);
-  cairo_set_source_rgb(ctx, 1.0, 1.0, 1.0);
-  cairo_fill(ctx);
-
-  cairo_font_options_t *cfo;
-  cfo = cairo_font_options_create();
-  cairo_font_options_set_antialias(cfo, CAIRO_ANTIALIAS_NONE);
-  cairo_set_font_options(ctx, cfo);
-  cairo_set_font_face(ctx, ffMetaWatch);
-  cairo_set_font_size(ctx, 8);
-
-  draw_image(ctx, root);
-
-  cairo_font_options_destroy(cfo);
-  cairo_destroy(ctx);
-
-  cairo_surface_write_to_png_stream(cs, write_png_stream_to_stdout, NULL);
-  cairo_surface_flush(cs);
-  cairo_surface_destroy(cs);
-  cairo_font_face_destroy(ffMetaWatch);
-
-  json_value_free(valRoot);
 }

@@ -19,8 +19,8 @@
     },
     {
       "type": "progressbar",
-      "origin": [197, 1],
-      "size": [58, 7],
+      "origin": [215, 1],
+      "size": [40, 7],
       "value": "mem_usage"
     },
 
@@ -35,7 +35,19 @@
       "size": [58, 7],
       "value": "disk_usage"
     },
-
+    {
+      "type": "text",
+      "origin": [0, 48],
+      "size": [50, 8],
+      "center": true,
+      "invert": true,
+      "value": "omnibar_title"
+    },
+    {
+      "type": "text",
+      "origin": [52, 48],
+      "value": "omnibar_content"
+    },    
     {
       "type": "text",
       "origin": [0, 56],
@@ -55,7 +67,10 @@
     "mem_usage_text": "MEM: 90% 11G",
 
     "disk_usage": 0.92,
-    "disk_usage_text": "disk1: 92% 23G",
+    "disk_usage_text": "/: 92% 23G",
+
+    "omnibar_title": "Weight",
+    "omnibar_content": "You are 122.2 kg @ 2012/12/14 09:12AM",
 
     "uptime": "up 2 days, 23:48, 5 users, load: 1.33 1.34 1.40",
     "infobar": "2012/12/10 11:14PM // retina // Mac OS X 10.8 Mt. Lion"
