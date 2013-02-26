@@ -6,3 +6,4 @@ install_manifest.txt
 
 lcd_renderer/src/lcd_renderer
 *.cache
+run.sh

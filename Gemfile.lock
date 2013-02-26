@@ -5,9 +5,19 @@ GEM
       pkg-config
     chunky_png (1.2.6)
     ffi (1.2.0)
+    httparty (0.9.0)
+      multi_json (~> 1.0)
+      multi_xml
+    json (1.7.5)
     libusb (0.2.2)
       ffi (>= 1.0)
+    multi_json (1.5.0)
+    multi_xml (0.5.1)
     pkg-config (1.1.4)
+    ruby-hmac (0.4.0)
+    simplificator-withings (0.6.6)
+      httparty
+      ruby-hmac
 
 PLATFORMS
   ruby
@@ -15,4 +25,6 @@ PLATFORMS
 DEPENDENCIES
   cairo
   chunky_png
+  json
   libusb
+  simplificator-withings
